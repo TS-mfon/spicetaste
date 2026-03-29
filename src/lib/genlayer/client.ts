@@ -1,17 +1,16 @@
 import { createClient } from "genlayer-js";
-import { studionet } from "genlayer-js/chains";
 
-export const CONTRACT_ADDRESS = "0xC0182ca8C2DFbc5B039BfD21Afc6f8Cc28719B90" as `0x${string}`;
+export const CONTRACT_ADDRESS = "0xe12FFFD21d4B2D40cd014014170404cd7aD151DD" as `0x${string}`;
 
-export const GENLAYER_CHAIN_ID = 61999;
-export const GENLAYER_CHAIN_ID_HEX = `0x${GENLAYER_CHAIN_ID.toString(16).toUpperCase()}`;
+export const GENLAYER_CHAIN_ID = 4221;
+export const GENLAYER_CHAIN_ID_HEX = `0x${GENLAYER_CHAIN_ID.toString(16)}`;
 
 export const GENLAYER_NETWORK = {
   chainId: GENLAYER_CHAIN_ID_HEX,
-  chainName: "GenLayer Studio",
+  chainName: "Genlayer Bradbury Testnet",
   nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
-  rpcUrls: ["https://studio.genlayer.com/api"],
-  blockExplorerUrls: [],
+  rpcUrls: ["https://rpc-bradbury.genlayer.com"],
+  blockExplorerUrls: ["https://explorer-bradbury.genlayer.com/"],
 };
 
 interface EthereumProvider {
@@ -89,7 +88,13 @@ export async function switchAccount(): Promise<string> {
 }
 
 export function createGenLayerClient(address?: string) {
-  const config: any = { chain: studionet };
+  const chain = {
+    id: GENLAYER_CHAIN_ID,
+    name: "Genlayer Bradbury Testnet",
+    nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
+    rpcUrls: { default: { http: ["https://rpc-bradbury.genlayer.com"] } },
+  };
+  const config: any = { chain };
   if (address) config.account = address as `0x${string}`;
   return createClient(config);
 }

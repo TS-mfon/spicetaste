@@ -64,13 +64,17 @@ export async function isOnGenLayerNetwork(): Promise<boolean> {
 export async function switchToGenLayerNetwork(): Promise<void> {
   const provider = getEthereumProvider();
   if (!provider) throw new Error("MetaMask is not installed");
+
   try {
-    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: GENLAYER_CHAIN_ID_HEX }] });
-  } catch (error: any) {
-    if (error.code === 4902) {
-      await provider.request({ method: "wallet_addEthereumChain", params: [GENLAYER_NETWORK] });
-    } else throw error;
+    await provider.request({ method: "wallet_addEthereumChain", params: [GENLAYER_NETWORK] });
+  } catch {
+    // Ignore if the wallet refuses to update an existing chain definition.
   }
+
+  await provider.request({
+    method: "wallet_switchEthereumChain",
+    params: [{ chainId: GENLAYER_CHAIN_ID_HEX }],
+  });
 }
 
 export async function connectMetaMask(): Promise<string> {
@@ -78,8 +82,7 @@ export async function connectMetaMask(): Promise<string> {
   if (!provider) throw new Error("MetaMask is not installed");
   const accounts = await provider.request({ method: "eth_requestAccounts" });
   if (!accounts?.length) throw new Error("No accounts found");
-  const onCorrect = await isOnGenLayerNetwork();
-  if (!onCorrect) await switchToGenLayerNetwork();
+  await switchToGenLayerNetwork();
   return accounts[0];
 }
 
@@ -89,6 +92,7 @@ export async function switchAccount(): Promise<string> {
   await provider.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
   const accounts = await provider.request({ method: "eth_accounts" });
   if (!accounts?.length) throw new Error("No account selected");
+  await switchToGenLayerNetwork();
   return accounts[0];
 }
 

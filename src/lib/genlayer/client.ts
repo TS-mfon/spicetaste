@@ -89,7 +89,7 @@ export async function switchAccount(): Promise<string> {
 }
 
 export function createGenLayerClient(address?: string) {
-  const config: any = { chain: simulator };
+  const config: any = { chain: studionet };
   if (address) config.account = address as `0x${string}`;
   return createClient(config);
 }

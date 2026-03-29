@@ -1,4 +1,5 @@
 import { createClient } from "genlayer-js";
+import { defineChain } from "viem";
 
 export const CONTRACT_ADDRESS = "0xe12FFFD21d4B2D40cd014014170404cd7aD151DD" as `0x${string}`;
 
@@ -87,14 +88,21 @@ export async function switchAccount(): Promise<string> {
   return accounts[0];
 }
 
+const testnetBradbury = defineChain({
+  id: GENLAYER_CHAIN_ID,
+  name: "Genlayer Bradbury Testnet",
+  nativeCurrency: { name: "GEN Token", symbol: "GEN", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://rpc-bradbury.genlayer.com"] },
+  },
+  blockExplorers: {
+    default: { name: "GenLayer Bradbury Explorer", url: "https://explorer-bradbury.genlayer.com" },
+  },
+  testnet: true,
+});
+
 export function createGenLayerClient(address?: string) {
-  const chain = {
-    id: GENLAYER_CHAIN_ID,
-    name: "Genlayer Bradbury Testnet",
-    nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
-    rpcUrls: { default: { http: ["https://rpc-bradbury.genlayer.com"] } },
-  };
-  const config: any = { chain };
+  const config: any = { chain: testnetBradbury };
   if (address) config.account = address as `0x${string}`;
   return createClient(config);
 }

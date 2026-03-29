@@ -93,7 +93,7 @@ const testnetBradbury = defineChain({
   name: "Genlayer Bradbury Testnet",
   nativeCurrency: { name: "GEN Token", symbol: "GEN", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://rpc-bradbury.genlayer.com"] },
+    default: { http: ["http://zksync-os-testnet-genlayer.zksync.dev"] },
   },
   blockExplorers: {
     default: { name: "GenLayer Bradbury Explorer", url: "https://explorer-bradbury.genlayer.com" },

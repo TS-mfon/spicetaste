@@ -1,5 +1,5 @@
 import { createClient } from "genlayer-js";
-import { defineChain } from "viem";
+import { testnetAsimov } from "genlayer-js/chains";
 
 export const CONTRACT_ADDRESS = "0xe12FFFD21d4B2D40cd014014170404cd7aD151DD" as `0x${string}`;
 
@@ -40,7 +40,9 @@ export async function getAccounts(): Promise<string[]> {
   if (!provider) return [];
   try {
     return await provider.request({ method: "eth_accounts" });
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 export async function getCurrentChainId(): Promise<string | null> {
@@ -48,7 +50,9 @@ export async function getCurrentChainId(): Promise<string | null> {
   if (!provider) return null;
   try {
     return await provider.request({ method: "eth_chainId" });
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export async function isOnGenLayerNetwork(): Promise<boolean> {
@@ -88,21 +92,23 @@ export async function switchAccount(): Promise<string> {
   return accounts[0];
 }
 
-const testnetBradbury = defineChain({
-  id: GENLAYER_CHAIN_ID,
+const bradburyChain = {
+  ...testnetAsimov,
   name: "Genlayer Bradbury Testnet",
-  nativeCurrency: { name: "GEN Token", symbol: "GEN", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://rpc-bradbury.genlayer.com"] },
+    ...testnetAsimov.rpcUrls,
+    default: {
+      ...testnetAsimov.rpcUrls.default,
+      http: ["https://rpc-bradbury.genlayer.com"],
+    },
   },
   blockExplorers: {
     default: { name: "GenLayer Bradbury Explorer", url: "https://explorer-bradbury.genlayer.com" },
   },
-  testnet: true,
-});
+};
 
 export function createGenLayerClient(address?: string) {
-  const config: any = { chain: testnetBradbury };
+  const config: any = { chain: bradburyChain };
   if (address) config.account = address as `0x${string}`;
   return createClient(config);
 }

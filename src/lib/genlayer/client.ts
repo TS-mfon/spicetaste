@@ -1,5 +1,5 @@
 import { createClient } from "genlayer-js";
-import { testnetBradbury } from "genlayer-js/chains";
+import { defineChain } from "viem";
 
 export const CONTRACT_ADDRESS = "0xe12FFFD21d4B2D40cd014014170404cd7aD151DD" as `0x${string}`;
 

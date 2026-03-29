@@ -42,7 +42,7 @@ export default function Submit() {
     setLoading(true);
     try {
       const contract = new TasteContract(address);
-      const receipt = await contract.createTest(
+      const { testId: returnedId } = await contract.createTest(
         form.name,
         form.variantAUrl,
         form.variantBUrl,
@@ -51,9 +51,9 @@ export default function Submit() {
         form.metric,
         parseInt(form.stake) || 0
       );
-      toast.success("Test created! Transaction accepted.");
-      // Try to extract test ID from receipt
-      setTestId(Date.now()); // placeholder display
+      const displayId = returnedId >= 0 ? returnedId : null;
+      toast.success(`Test created!${displayId !== null ? ` Your Test ID is ${displayId}` : ""}`);
+      setTestId(displayId !== null ? displayId : 0);
       setForm({ name: "", variantAUrl: "", variantBUrl: "", variantADesc: "", variantBDesc: "", metric: "", stake: "0" });
     } catch (err: any) {
       toast.error(err.message || "Failed to create test");

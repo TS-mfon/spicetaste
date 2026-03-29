@@ -88,6 +88,19 @@ export async function switchAccount(): Promise<string> {
   return accounts[0];
 }
 
+const testnetBradbury = defineChain({
+  id: GENLAYER_CHAIN_ID,
+  name: "Genlayer Bradbury Testnet",
+  nativeCurrency: { name: "GEN Token", symbol: "GEN", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://rpc-bradbury.genlayer.com"] },
+  },
+  blockExplorers: {
+    default: { name: "GenLayer Bradbury Explorer", url: "https://explorer-bradbury.genlayer.com" },
+  },
+  testnet: true,
+});
+
 export function createGenLayerClient(address?: string) {
   const config: any = { chain: testnetBradbury };
   if (address) config.account = address as `0x${string}`;

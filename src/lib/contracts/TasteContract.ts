@@ -71,7 +71,7 @@ class TasteContract {
     variantBDesc: string,
     successMetric: string,
     stake: number
-  ): Promise<TransactionReceipt> {
+  ): Promise<{ receipt: TransactionReceipt; testId: number }> {
     try {
       const txHash = await this.client.writeContract({
         address: this.contractAddress,
@@ -87,7 +87,18 @@ class TasteContract {
         interval: 3000,
       });
 
-      return receipt as TransactionReceipt;
+      // Extract test ID from receipt result data
+      let testId = -1;
+      try {
+        const r = receipt as any;
+        if (r.result?.data !== undefined) {
+          testId = Number(r.result.data);
+        } else if (r.data?.result !== undefined) {
+          testId = Number(r.data.result);
+        }
+      } catch {}
+
+      return { receipt: receipt as TransactionReceipt, testId };
     } catch (error) {
       console.error("Error creating test:", error);
       throw new Error("Failed to create test");

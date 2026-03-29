@@ -78,9 +78,10 @@ export default function Submit() {
               className="mt-6 flex items-center gap-3 rounded-lg border border-emerald/30 bg-emerald/5 p-4"
             >
               <CheckCircle className="h-5 w-5 text-emerald" />
-              <p className="text-sm text-foreground">
-                Test submitted successfully! Head to the <strong>Arena</strong> to add evidence and trigger resolution.
-              </p>
+              <div className="text-sm text-foreground">
+                <p>Test submitted successfully! <strong className="text-primary">Your Test ID is: {testId}</strong></p>
+                <p className="mt-1 text-muted-foreground">Save this ID — use it in the <strong>Arena</strong> to add evidence and trigger resolution.</p>
+              </div>
             </motion.div>
           )}
 

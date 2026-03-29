@@ -10,7 +10,7 @@ export const GENLAYER_NETWORK = {
   chainId: GENLAYER_CHAIN_ID_HEX,
   chainName: "Genlayer Bradbury Testnet",
   nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
-  rpcUrls: ["https://rpc-bradbury.genlayer.com"],
+  rpcUrls: ["http://zksync-os-testnet-genlayer.zksync.dev"],
   blockExplorerUrls: ["https://explorer-bradbury.genlayer.com/"],
 };
 

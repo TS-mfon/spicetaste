@@ -42,7 +42,7 @@ export default function Submit() {
     setLoading(true);
     try {
       const contract = new TasteContract(address);
-      const receipt = await contract.createTest(
+      const { testId: returnedId } = await contract.createTest(
         form.name,
         form.variantAUrl,
         form.variantBUrl,
@@ -51,9 +51,9 @@ export default function Submit() {
         form.metric,
         parseInt(form.stake) || 0
       );
-      toast.success("Test created! Transaction accepted.");
-      // Try to extract test ID from receipt
-      setTestId(Date.now()); // placeholder display
+      const displayId = returnedId >= 0 ? returnedId : null;
+      toast.success(`Test created!${displayId !== null ? ` Your Test ID is ${displayId}` : ""}`);
+      setTestId(displayId !== null ? displayId : 0);
       setForm({ name: "", variantAUrl: "", variantBUrl: "", variantADesc: "", variantBDesc: "", metric: "", stake: "0" });
     } catch (err: any) {
       toast.error(err.message || "Failed to create test");
@@ -78,9 +78,10 @@ export default function Submit() {
               className="mt-6 flex items-center gap-3 rounded-lg border border-emerald/30 bg-emerald/5 p-4"
             >
               <CheckCircle className="h-5 w-5 text-emerald" />
-              <p className="text-sm text-foreground">
-                Test submitted successfully! Head to the <strong>Arena</strong> to add evidence and trigger resolution.
-              </p>
+              <div className="text-sm text-foreground">
+                <p>Test submitted successfully! <strong className="text-primary">Your Test ID is: {testId}</strong></p>
+                <p className="mt-1 text-muted-foreground">Save this ID — use it in the <strong>Arena</strong> to add evidence and trigger resolution.</p>
+              </div>
             </motion.div>
           )}
 

@@ -108,7 +108,10 @@ const bradburyChain = {
 };
 
 export function createGenLayerClient(address?: string) {
-  const config: any = { chain: bradburyChain };
+  const config: any = {
+    chain: bradburyChain,
+    endpoint: "https://rpc-bradbury.genlayer.com",
+  };
   if (address) config.account = address as `0x${string}`;
   return createClient(config);
 }

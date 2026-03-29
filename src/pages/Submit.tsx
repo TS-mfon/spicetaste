@@ -77,16 +77,26 @@ export default function Submit() {
             Submit two creative variants for AI-powered taste evaluation.
           </p>
 
-          {testId !== null && (
+          {(testId !== null || submittedTxHash) && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="mt-6 flex items-center gap-3 rounded-lg border border-emerald/30 bg-emerald/5 p-4"
+              className="mt-6 flex items-center gap-3 rounded-lg border border-border bg-secondary p-4"
             >
-              <CheckCircle className="h-5 w-5 text-emerald" />
+              <CheckCircle className="h-5 w-5 text-primary" />
               <div className="text-sm text-foreground">
-                <p>Test submitted successfully! <strong className="text-primary">Your Test ID is: {testId}</strong></p>
-                <p className="mt-1 text-muted-foreground">Save this ID — use it in the <strong>Arena</strong> to add evidence and trigger resolution.</p>
+                <p>
+                  Test submitted successfully!
+                  {testId !== null && <strong className="text-primary"> Your Test ID is: {testId}</strong>}
+                </p>
+                {submittedTxHash && (
+                  <p className="mt-1 break-all text-muted-foreground">Transaction hash: {submittedTxHash}</p>
+                )}
+                <p className="mt-1 text-muted-foreground">
+                  {testId !== null
+                    ? "Save this ID — use it in the Arena to add evidence and trigger resolution."
+                    : "The transaction was sent successfully. If the test ID takes a moment to appear on-chain, paste the transaction hash into the explorer or check the Arena shortly."}
+                </p>
               </div>
             </motion.div>
           )}

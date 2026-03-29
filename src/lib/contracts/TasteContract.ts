@@ -77,7 +77,7 @@ class TasteContract {
     variantBDesc: string,
     successMetric: string,
     stake: number
-  ): Promise<{ receipt: TransactionReceipt; testId: number }> {
+  ): Promise<CreateTestResult> {
     try {
       await switchToGenLayerNetwork();
 
@@ -106,12 +106,13 @@ class TasteContract {
           }
         } catch {}
 
-        return { receipt: receipt as TransactionReceipt, testId };
+        return { receipt: receipt as TransactionReceipt, testId, txHash };
       } catch (receiptError) {
         console.warn("Transaction was submitted but receipt polling failed:", receiptError);
         return {
           receipt: { status: "PENDING", hash: txHash } as TransactionReceipt,
           testId: -1,
+          txHash,
         };
       }
     } catch (error) {

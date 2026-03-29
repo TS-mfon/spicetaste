@@ -1,5 +1,5 @@
 import { createClient } from "genlayer-js";
-import { simulator } from "genlayer-js/chains";
+import { studionet } from "genlayer-js/chains";
 
 export const CONTRACT_ADDRESS = "0xC0182ca8C2DFbc5B039BfD21Afc6f8Cc28719B90" as `0x${string}`;
 

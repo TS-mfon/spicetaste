@@ -15,6 +15,12 @@ export interface TransactionReceipt {
   [key: string]: any;
 }
 
+export interface CreateTestResult {
+  receipt: TransactionReceipt;
+  testId: number;
+  txHash: string;
+}
+
 class TasteContract {
   private contractAddress: `0x${string}`;
   private client: ReturnType<typeof createGenLayerClient>;

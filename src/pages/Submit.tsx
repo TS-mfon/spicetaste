@@ -13,6 +13,7 @@ export default function Submit() {
   const { address, isConnected } = useWallet();
   const [loading, setLoading] = useState(false);
   const [testId, setTestId] = useState<number | null>(null);
+  const [submittedTxHash, setSubmittedTxHash] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -40,9 +41,12 @@ export default function Submit() {
     }
 
     setLoading(true);
+    setTestId(null);
+    setSubmittedTxHash(null);
+
     try {
       const contract = new TasteContract(address);
-      const { testId: returnedId } = await contract.createTest(
+      const { testId: returnedId, txHash } = await contract.createTest(
         form.name,
         form.variantAUrl,
         form.variantBUrl,
@@ -51,9 +55,11 @@ export default function Submit() {
         form.metric,
         parseInt(form.stake) || 0
       );
+
       const displayId = returnedId >= 0 ? returnedId : null;
-      toast.success(`Test created!${displayId !== null ? ` Your Test ID is ${displayId}` : ""}`);
-      setTestId(displayId !== null ? displayId : 0);
+      setTestId(displayId);
+      setSubmittedTxHash(txHash);
+      toast.success(displayId !== null ? `Test created! Your Test ID is ${displayId}` : "Transaction submitted successfully");
       setForm({ name: "", variantAUrl: "", variantBUrl: "", variantADesc: "", variantBDesc: "", metric: "", stake: "0" });
     } catch (err: any) {
       toast.error(err.message || "Failed to create test");

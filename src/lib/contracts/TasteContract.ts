@@ -82,24 +82,32 @@ class TasteContract {
         value: BigInt(0),
       });
 
-      const receipt = await this.client.waitForTransactionReceipt({
-        hash: txHash,
-        status: "ACCEPTED" as any,
-        retries: 30,
-        interval: 3000,
-      });
-
-      let testId = -1;
       try {
-        const r = receipt as any;
-        if (r.result?.data !== undefined) {
-          testId = Number(r.result.data);
-        } else if (r.data?.result !== undefined) {
-          testId = Number(r.data.result);
-        }
-      } catch {}
+        const receipt = await this.client.waitForTransactionReceipt({
+          hash: txHash,
+          status: "ACCEPTED" as any,
+          retries: 30,
+          interval: 3000,
+        });
 
-      return { receipt: receipt as TransactionReceipt, testId };
+        let testId = -1;
+        try {
+          const r = receipt as any;
+          if (r.result?.data !== undefined) {
+            testId = Number(r.result.data);
+          } else if (r.data?.result !== undefined) {
+            testId = Number(r.data.result);
+          }
+        } catch {}
+
+        return { receipt: receipt as TransactionReceipt, testId };
+      } catch (receiptError) {
+        console.warn("Transaction was submitted but receipt polling failed:", receiptError);
+        return {
+          receipt: { status: "PENDING", hash: txHash } as TransactionReceipt,
+          testId: -1,
+        };
+      }
     } catch (error) {
       console.error("Error creating test:", error);
       throw new Error("Failed to create test");

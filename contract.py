@@ -6,182 +6,168 @@ from genlayer import *
 
 @allow_storage
 @dataclass
-class Member:
-    weight: u256
-    joined_at: u256
-
-@allow_storage
-@dataclass
-class AIStats:
-    total_votes: u256
-    correct_predictions: u256
-    accuracy: float
-    current_weight: u256
-
-@allow_storage
-@dataclass
-class Proposal:
-    title: str
+class Variant:
+    url: str
     description: str
-    proposer: Address
-    status: str  # "pending", "active", "passed", "rejected"
-    human_yes: u256
-    human_no: u256
-    ai_vote: str
-    ai_reasoning: str
-    ai_confidence: float
-    ai_predicted_outcome: str
-    ai_risk_level: str
-    outcome_correct: bool
-    has_outcome: bool
+    content_snapshot: str
 
-class ShadowCouncil(gl.Contract):
-    proposals: TreeMap[u256, Proposal]
-    human_votes: TreeMap[u256, TreeMap[Address, str]]
-    members: TreeMap[Address, Member]
-    ai_stats: AIStats
-    proposal_count: u256
+@allow_storage
+@dataclass
+class Evidence:
+    submitter: Address
+    url: str
+    description: str
+    content: str
+
+@allow_storage
+@dataclass
+class ABTest:
+    id: u256
+    name: str
+    creator: Address
+    variant_a: Variant
+    variant_b: Variant
+    success_metric: str
+    stake: u256
+    status: str # "collecting", "resolved"
+    winner: str # "A", "B", "inconclusive"
+    ai_reasoning: str
+
+class TrustlessABTest(gl.Contract):
+    tests: TreeMap[u256, ABTest]
+    # Use a separate TreeMap for evidence to avoid nested collection errors (DynArray inside TreeMap)
+    test_evidence: TreeMap[u256, DynArray[str]] 
+    test_count: u256
 
     def __init__(self):
-        self.ai_stats = AIStats(total_votes=0, correct_predictions=0, accuracy=0.0, current_weight=0)
-        self.proposal_count = 0
+        self.test_count = 0
 
     @gl.public.write
-    def add_member(self, address: Address, weight: u256) -> None:
-        # Robustly handle cases where 'address' is passed as an int or string
-        if isinstance(address, int):
-            addr = Address(hex(address))
-        elif isinstance(address, str):
-            addr = Address(address)
-        else:
-            addr = address
-        self.members[addr] = Member(weight=weight, joined_at=0)
+    def create_test(
+        self,
+        name: str,
+        variant_a_url: str,
+        variant_b_url: str,
+        variant_a_description: str,
+        variant_b_description: str,
+        success_metric: str,
+        stake: u256
+    ) -> u256:
+        tid = self.test_count
+        self.test_count += 1
 
-    @gl.public.write
-    def submit_proposal(self, title: str, description: str, context_url: str) -> u256:
-        """Step 1: Instant submission. No LLM call here to prevent timeouts."""
-        pid = self.proposal_count
-        self.proposal_count += 1
-        
-        self.proposals[pid] = Proposal(
-            title=title[:100],
-            description=description, # Store full description for humans
-            proposer=gl.message.sender_address,
-            status="pending", # Needs activation via AI in Step 2
-            human_yes=0,
-            human_no=0,
-            ai_vote="",
-            ai_reasoning="",
-            ai_confidence=0.0,
-            ai_predicted_outcome="",
-            ai_risk_level="",
-            outcome_correct=False,
-            has_outcome=False
+        def fetch_variants():
+            content_a, content_b = "n/a", "n/a"
+            try:
+                # Robustly handle empty URLs
+                if variant_a_url and variant_a_url.strip():
+                    res_a = gl.nondet.web.get(variant_a_url)
+                    content_a = res_a.body.decode("utf-8", errors="ignore")[:1000]
+                if variant_b_url and variant_b_url.strip():
+                    res_b = gl.nondet.web.get(variant_b_url)
+                    content_b = res_b.body.decode("utf-8", errors="ignore")[:1000]
+            except:
+                pass
+            return json.dumps({"a": content_a, "b": content_b}, sort_keys=True)
+
+        # Ensure validators reach consensus on the content snapshots
+        v_raw = gl.eq_principle.strict_eq(fetch_variants)
+        v = json.loads(v_raw)
+
+        self.tests[tid] = ABTest(
+            id=tid,
+            name=name[:100],
+            creator=gl.message.sender_address,
+            variant_a=Variant(variant_a_url, variant_a_description[:200], v["a"]),
+            variant_b=Variant(variant_b_url, variant_b_description[:200], v["b"]),
+            success_metric=success_metric[:200],
+            stake=stake,
+            status="collecting",
+            winner="",
+            ai_reasoning=""
         )
-        return pid
+        return tid
 
     @gl.public.write
-    def activate_proposal(self, proposal_id: u256) -> bool:
-        """Step 2: Isolated AI evaluation. If this times out, retry this specific call."""
-        assert proposal_id < self.proposal_count, "Proposal not found"
-        p = self.proposals[proposal_id]
-        assert p.status == "pending", "Proposal already active or resolved"
+    def submit_evidence(self, test_id: u256, url: str, description: str) -> None:
+        assert test_id < self.test_count, "Test not found"
+        t = self.tests[test_id]
+        assert t.status == "collecting", "Test is already resolved"
+
+        def fetch():
+            try:
+                if url and url.strip():
+                    res = gl.nondet.web.get(url)
+                    return res.body.decode("utf-8", errors="ignore")[:1000]
+                return "n/a"
+            except:
+                return "error_fetching"
+
+        content = gl.eq_principle.strict_eq(fetch)
+        
+        # Serialize the Evidence dataclass to JSON to store it in a DynArray[str]
+        ev = {
+            "submitter": gl.message.sender_address.as_hex,
+            "url": url,
+            "description": description[:200],
+            "content": content
+        }
+        
+        submissions = self.test_evidence.get_or_insert_default(test_id)
+        submissions.append(json.dumps(ev))
+
+    @gl.public.write
+    def resolve(self, test_id: u256) -> str:
+        assert test_id < self.test_count
+        t = self.tests[test_id]
+        assert t.status == "collecting"
 
         def leader_fn():
-            # Feed AI a truncated summary for maximum execution speed
-            summary = p.description[:400]
-            prompt = f"Vote 'yes' or 'no' for DAO proposal. Title: {p.title}. Summary: {summary}. Respond ONLY in JSON: {{\"vote\":\"yes\"/\"no\",\"reasoning\":\"...\"}}"
+            ev_list = self.test_evidence.get(test_id)
+            ev_text = ""
+            if ev_list:
+                # Process top 5 evidence submissions to avoid token limit issues
+                for i in range(min(len(ev_list), 5)):
+                    e = json.loads(ev_list[i])
+                    ev_text += f"\n- {e['description']}: {e['content'][:200]}"
+
+            prompt = f"""You are an objective AI evaluator.
+Test: {t.name}
+Metric: {t.success_metric}
+Variant A: {t.variant_a.description}. Content: {t.variant_a.content_snapshot[:400]}
+Variant B: {t.variant_b.description}. Content: {t.variant_b.content_snapshot[:400]}
+Evidence Summary: {ev_text if ev_text else "None"}
+
+Evaluate which variant wins. Respond ONLY JSON: {{"winner":"A"|"B"|"inconclusive","reasoning":"..."}}"""
             return gl.nondet.exec_prompt(prompt, response_format="json")
 
         def validator_fn(leaders_res: gl.vm.Result) -> bool:
             if not isinstance(leaders_res, gl.vm.Return):
                 return False
-            
-            # Extract the vote from the leader
-            leader_data = leaders_res.calldata
-            leader_vote = leader_data.get("vote")
-            if leader_vote not in ["yes", "no"]:
+            leader_winner = leaders_res.calldata.get("winner")
+            if leader_winner not in ["A", "B", "inconclusive"]:
                 return False
-                
-            # Validators re-run to ensure AI consensus on the 'vote' field
+            
+            # Re-run evaluation to reach consensus on the winner field
             my_data = leader_fn()
-            return my_data.get("vote") == leader_vote
+            return my_data.get("winner") == leader_winner
 
         ai_data = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         
-        p.ai_vote = ai_data.get("vote", "no")
-        p.ai_reasoning = ai_data.get("reasoning", "AI Analysis Complete")
-        p.status = "active"
-        return True
-
-    @gl.public.write
-    def cast_vote(self, proposal_id: u256, vote: str) -> None:
-        assert proposal_id < self.proposal_count, "Proposal not found"
-        p = self.proposals[proposal_id]
-        assert p.status == "active", "Voting is not active for this proposal"
-        assert gl.message.sender_address in self.members, "Not a member"
-        assert vote in ["yes", "no", "abstain"], "Invalid vote"
-
-        sender = gl.message.sender_address
-        weight = self.members[sender].weight
-
-        voters = self.human_votes.get_or_insert_default(proposal_id)
-        prev_vote = voters.get(sender, "")
-
-        if prev_vote == "yes":
-            p.human_yes -= weight
-        elif prev_vote == "no":
-            p.human_no -= weight
-
-        voters[sender] = vote
-        if vote == "yes":
-            p.human_yes += weight
-        elif vote == "no":
-            p.human_no += weight
-
-    @gl.public.write
-    def resolve_proposal(self, proposal_id: u256) -> str:
-        assert proposal_id < self.proposal_count
-        p = self.proposals[proposal_id]
-        assert p.status == "active"
-
-        ai_weight = self.ai_stats.current_weight
-        total_human_participation = p.human_yes + p.human_no
-        if total_human_participation == 0:
-            total_human_participation = 1
-
-        h_yes = p.human_yes * (100 - ai_weight)
-        h_no = p.human_no * (100 - ai_weight)
-
-        ai_yes_val = 0
-        ai_no_val = 0
-        if p.ai_vote == "yes":
-            ai_yes_val = ai_weight * total_human_participation
-        elif p.ai_vote == "no":
-            ai_no_val = ai_weight * total_human_participation
-
-        if h_yes + ai_yes_val > h_no + ai_no_val:
-            p.status = "passed"
-        else:
-            p.status = "rejected"
-
-        return p.status
+        t.winner = ai_data.get("winner", "inconclusive")
+        t.ai_reasoning = ai_data.get("reasoning", "Analysis Complete")
+        t.status = "resolved"
+        
+        return t.winner
 
     @gl.public.view
-    def get_proposal(self, proposal_id: u256) -> dict:
-        p = self.proposals[proposal_id]
+    def get_test(self, test_id: u256) -> dict:
+        t = self.tests[test_id]
         return {
-            "title": p.title,
-            "status": p.status,
-            "human_yes": int(p.human_yes),
-            "human_no": int(p.human_no),
-            "ai_vote": p.ai_vote,
-            "ai_reasoning": p.ai_reasoning
-        }
-
-    @gl.public.view
-    def get_ai_stats(self) -> dict:
-        return {
-            "accuracy": self.ai_stats.accuracy,
-            "current_weight": int(self.ai_stats.current_weight)
+            "id": int(t.id),
+            "name": t.name,
+            "status": t.status,
+            "winner": t.winner,
+            "reasoning": t.ai_reasoning,
+            "stake": int(t.stake)
         }

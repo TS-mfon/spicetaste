@@ -63,7 +63,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setState(p => ({ ...p, address: accounts[0] || null, chainId, isConnected: accounts.length > 0, isOnCorrectNetwork: correct }));
     };
     const onChain = async (chainId: string) => {
-      const correct = parseInt(chainId, 16) === 4221;
+      const correct = parseInt(chainId, 16) === 61999;
       const accounts = await getAccounts();
       setState(p => ({ ...p, chainId, address: accounts[0] || null, isConnected: accounts.length > 0, isOnCorrectNetwork: correct }));
     };

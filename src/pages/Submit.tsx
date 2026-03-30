@@ -13,7 +13,6 @@ export default function Submit() {
   const { address, isConnected } = useWallet();
   const [loading, setLoading] = useState(false);
   const [testId, setTestId] = useState<number | null>(null);
-  const [submittedTxHash, setSubmittedTxHash] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -41,12 +40,9 @@ export default function Submit() {
     }
 
     setLoading(true);
-    setTestId(null);
-    setSubmittedTxHash(null);
-
     try {
       const contract = new TasteContract(address);
-      const { testId: returnedId, txHash } = await contract.createTest(
+      const { testId: returnedId } = await contract.createTest(
         form.name,
         form.variantAUrl,
         form.variantBUrl,
@@ -55,11 +51,9 @@ export default function Submit() {
         form.metric,
         parseInt(form.stake) || 0
       );
-
       const displayId = returnedId >= 0 ? returnedId : null;
-      setTestId(displayId);
-      setSubmittedTxHash(txHash);
-      toast.success(displayId !== null ? `Test created! Your Test ID is ${displayId}` : "Transaction submitted successfully");
+      toast.success(`Test created!${displayId !== null ? ` Your Test ID is ${displayId}` : ""}`);
+      setTestId(displayId !== null ? displayId : 0);
       setForm({ name: "", variantAUrl: "", variantBUrl: "", variantADesc: "", variantBDesc: "", metric: "", stake: "0" });
     } catch (err: any) {
       toast.error(err.message || "Failed to create test");
@@ -77,26 +71,16 @@ export default function Submit() {
             Submit two creative variants for AI-powered taste evaluation.
           </p>
 
-          {(testId !== null || submittedTxHash) && (
+          {testId !== null && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="mt-6 flex items-center gap-3 rounded-lg border border-border bg-secondary p-4"
+              className="mt-6 flex items-center gap-3 rounded-lg border border-emerald/30 bg-emerald/5 p-4"
             >
-              <CheckCircle className="h-5 w-5 text-primary" />
+              <CheckCircle className="h-5 w-5 text-emerald" />
               <div className="text-sm text-foreground">
-                <p>
-                  Test submitted successfully!
-                  {testId !== null && <strong className="text-primary"> Your Test ID is: {testId}</strong>}
-                </p>
-                {submittedTxHash && (
-                  <p className="mt-1 break-all text-muted-foreground">Transaction hash: {submittedTxHash}</p>
-                )}
-                <p className="mt-1 text-muted-foreground">
-                  {testId !== null
-                    ? "Save this ID — use it in the Arena to add evidence and trigger resolution."
-                    : "The transaction was sent successfully. If the test ID takes a moment to appear on-chain, paste the transaction hash into the explorer or check the Arena shortly."}
-                </p>
+                <p>Test submitted successfully! <strong className="text-primary">Your Test ID is: {testId}</strong></p>
+                <p className="mt-1 text-muted-foreground">Save this ID — use it in the <strong>Arena</strong> to add evidence and trigger resolution.</p>
               </div>
             </motion.div>
           )}

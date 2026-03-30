@@ -1,4 +1,4 @@
-import { createGenLayerClient, CONTRACT_ADDRESS, switchToGenLayerNetwork } from "../genlayer/client";
+import { createGenLayerClient, CONTRACT_ADDRESS } from "../genlayer/client";
 
 export interface TestResult {
   id: number;
@@ -13,12 +13,6 @@ export interface TransactionReceipt {
   status: string;
   hash: string;
   [key: string]: any;
-}
-
-export interface CreateTestResult {
-  receipt: TransactionReceipt;
-  testId: number;
-  txHash: string;
 }
 
 class TasteContract {
@@ -77,10 +71,8 @@ class TasteContract {
     variantBDesc: string,
     successMetric: string,
     stake: number
-  ): Promise<CreateTestResult> {
+  ): Promise<{ receipt: TransactionReceipt; testId: number }> {
     try {
-      await switchToGenLayerNetwork();
-
       const txHash = await this.client.writeContract({
         address: this.contractAddress,
         functionName: "create_test",
@@ -88,33 +80,25 @@ class TasteContract {
         value: BigInt(0),
       });
 
+      const receipt = await this.client.waitForTransactionReceipt({
+        hash: txHash,
+        status: "ACCEPTED" as any,
+        retries: 30,
+        interval: 3000,
+      });
+
+      // Extract test ID from receipt result data
+      let testId = -1;
       try {
-        const receipt = await this.client.waitForTransactionReceipt({
-          hash: txHash,
-          status: "ACCEPTED" as any,
-          retries: 30,
-          interval: 3000,
-        });
+        const r = receipt as any;
+        if (r.result?.data !== undefined) {
+          testId = Number(r.result.data);
+        } else if (r.data?.result !== undefined) {
+          testId = Number(r.data.result);
+        }
+      } catch {}
 
-        let testId = -1;
-        try {
-          const r = receipt as any;
-          if (r.result?.data !== undefined) {
-            testId = Number(r.result.data);
-          } else if (r.data?.result !== undefined) {
-            testId = Number(r.data.result);
-          }
-        } catch {}
-
-        return { receipt: receipt as TransactionReceipt, testId, txHash };
-      } catch (receiptError) {
-        console.warn("Transaction was submitted but receipt polling failed:", receiptError);
-        return {
-          receipt: { status: "PENDING", hash: txHash } as TransactionReceipt,
-          testId: -1,
-          txHash,
-        };
-      }
+      return { receipt: receipt as TransactionReceipt, testId };
     } catch (error) {
       console.error("Error creating test:", error);
       throw new Error("Failed to create test");
@@ -123,8 +107,6 @@ class TasteContract {
 
   async submitEvidence(testId: number, url: string, description: string): Promise<TransactionReceipt> {
     try {
-      await switchToGenLayerNetwork();
-
       const txHash = await this.client.writeContract({
         address: this.contractAddress,
         functionName: "submit_evidence",
@@ -148,8 +130,6 @@ class TasteContract {
 
   async resolve(testId: number): Promise<TransactionReceipt> {
     try {
-      await switchToGenLayerNetwork();
-
       const txHash = await this.client.writeContract({
         address: this.contractAddress,
         functionName: "resolve",

@@ -63,6 +63,19 @@ class TasteContract {
     }
   }
 
+  async getTestCount(): Promise<number> {
+    try {
+      const result: any = await this.client.readContract({
+        address: this.contractAddress,
+        functionName: "get_test_count",
+        args: [],
+      });
+      return Number(result);
+    } catch {
+      return -1;
+    }
+  }
+
   async createTest(
     name: string,
     variantAUrl: string,
@@ -73,6 +86,9 @@ class TasteContract {
     stake: number
   ): Promise<{ receipt: TransactionReceipt; testId: number }> {
     try {
+      // Read current test_count BEFORE creating — that will be our new test's ID
+      const predictedId = await this.getTestCount();
+
       const txHash = await this.client.writeContract({
         address: this.contractAddress,
         functionName: "create_test",
@@ -87,16 +103,22 @@ class TasteContract {
         interval: 3000,
       });
 
-      // Extract test ID from receipt result data
+      // Try extracting from receipt first
       let testId = -1;
       try {
         const r = receipt as any;
-        if (r.result?.data !== undefined) {
+        console.log("Receipt structure:", JSON.stringify(r, null, 2));
+        if (r.result?.data !== undefined && Number(r.result.data) > 0) {
           testId = Number(r.result.data);
-        } else if (r.data?.result !== undefined) {
+        } else if (r.data?.result !== undefined && Number(r.data.result) > 0) {
           testId = Number(r.data.result);
         }
       } catch {}
+
+      // Fallback: use predicted ID from pre-read test_count
+      if (testId <= 0 && predictedId >= 0) {
+        testId = predictedId;
+      }
 
       return { receipt: receipt as TransactionReceipt, testId };
     } catch (error) {
